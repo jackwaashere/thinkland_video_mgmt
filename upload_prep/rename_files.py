@@ -5,19 +5,7 @@ Author: Yingjie Tong
 Project: https://github.com/jackwaashere/video_upload
 
 
-
-
-$ python3 rename_files.py --working_dir "my_folder/Z5-1223"
-
-output> The directory name is not a valid Zoom ID, but is similar to Z05. If this is not a mistake, type 'Y' to continue. Type anything else to terminate.
-input>  no
-output> Terminating code by user input
-
-
-
 - Sample Input and Output
-
-
 
 $ python3 rename_files.py --working_dir "my_folder/Z09-1223"
 
@@ -37,24 +25,14 @@ output> Renaming GMT20221101-230107_Recording_3026x1872.mp4 to Z09-GMT20221101-2
 output> Completed!
 
 
+- Another Example
 
+$ python3 rename_files.py --working_dir "my_folder/Z5-1223"
 
-
-$ python3 rename_files.py --working_dir "my_folder/Z10-1223"
-
-Renaming GMT20220717-152718_Recording_1920x1080.mp4 to Z10-GMT20220717-152718_Recording_1920x1080.mp4
-Renaming GMT20220810-125023_Recording_3840x2300.mp4 to Z10-GMT20220810-125023_Recording_3840x2300.mp4
-Renaming GMT20220907-230058_Recording_1920x1080.mp4 to Z10-GMT20220907-230058_Recording_1920x1080.mp4
-Renaming GMT20221114-230124_Recording_1920x1020.mp4 to Z10-GMT20221114-230124_Recording_1920x1020.mp4
-Renaming GMT20221102-215507_Recording.transcript.vtt to Z10-GMT20221102-215507_Recording.transcript.vtt
-
-(too much output)...
-
-Renaming GMT20221024-220114_Recording_gallery_1920x1080.mp4 to Z10-GMT20221024-220114_Recording_gallery_1920x1080.mp4
-Renaming GMT20220904-191702_Recording_gallery_1920x1058.mp4 to Z10-GMT20220904-191702_Recording_gallery_1920x1058.mp4
-Renaming GMT20221010-215814_Recording.txt to Z10-GMT20221010-215814_Recording.txt
-Renaming GMT20221204-232414_Recording_1920x1080.mp4 to Z10-GMT20221204-232414_Recording_1920x1080.mp4
-Completed!
+output> The directory name is not a valid Zoom ID, but is similar to Z05. If this is not a mistake,
+        type 'Y' to continue. Type anything else to terminate.
+input>  no
+output> Terminating code by user input
 '''
 
 import os
