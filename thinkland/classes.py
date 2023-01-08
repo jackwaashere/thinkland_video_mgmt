@@ -10,3 +10,9 @@ class Meeting:
         self.teacherName = teacherName
         self.rawZoomId = rawZoomId
 
+
+class PlaylistManager:
+    pass
+
+
+
