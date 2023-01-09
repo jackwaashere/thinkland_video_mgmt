@@ -9,13 +9,15 @@ from thinkland.zoom_canonicalize import is_canonical
 log_file = 'data/log.txt'
 
 class Meeting:
-    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId):
+    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId, reported, video):
         self.startTime = startTime
         self.endTime = endTime
         self.className = className
         self.classId = classId
         self.teacherName = teacherName
         self.rawZoomId = rawZoomId
+        self.reported = reported
+        self.video = video
         self.youtubeURL = None
         self.playlist = None
 
@@ -50,7 +52,7 @@ class MeetingDB:
             endTime = datetime(year, month, day, hour, mins, sec, tzinfo=zoneInfo)
             
             meetingObj = Meeting(startTime, endTime,
-                            a['className'], a['classId'], a['teacher'], a['rawZoom'])
+                            a['className'], a['classId'], a['teacher'], a['rawZoom'], a['reported'], a['video'])
             if 'youtube_url' in a:
                 meetingObj.youtubeURL = a['youtube_url']
             if 'playlist' in a:
@@ -117,7 +119,9 @@ class MeetingDB:
                 'className': curMeeting.className,
                 'classId': curMeeting.classId,
                 'teacher': curMeeting.teacherName,
-                'rawZoom': curMeeting.rawZoomId
+                'rawZoom': curMeeting.rawZoomId,
+                'reported': curMeeting.reported,
+                'video': curMeeting.video
             }
             if curMeeting.youtubeURL:
                 d['youtube_url'] = curMeeting.youtubeURL
