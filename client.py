@@ -32,8 +32,11 @@ from thinkland.classes import log
 import make_playlists
 
 
-unprocessed_playlist = 'PLLoERmYbGOUn9r9pAke-3_pj-kEEj9cpl'
-error_processing_playlist = 'PLLoERmYbGOUkL5PX69LpM4bUiMYjhzOk2'
+unprocessed_playlist = 'PLzr1p9rMdhyAPAN1c6O-AeoJPUk4LkQj2'
+error_processing_playlist = 'PLzr1p9rMdhyCZ-wxUPEUy7plgIWP_l-cI'
+
+#unprocessed_playlist = 'PLLoERmYbGOUn9r9pAke-3_pj-kEEj9cpl'
+#error_processing_playlist = 'PLLoERmYbGOUkL5PX69LpM4bUiMYjhzOk2'
 
 DAILY_THRESHOLD = 9000
 
