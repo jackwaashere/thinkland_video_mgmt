@@ -55,21 +55,21 @@ def load_meetings_from_json_file(jsonFilePath):
             month = int(dateSections[1])
             day = int(dateSections[2])
             tzone = ZoneInfo('US/Eastern')
-            meetingDate = datetime(year, month, day, tzinfo=tzone)
+            # meetingDate = datetime(year, month, day, tzinfo=tzone)
 
             sTimeSections = reader[curMeeting]['stime'].split(':')
             shour = int(sTimeSections[0])
             smin = int(sTimeSections[1])
             ssec = int(sTimeSections[2])
-            stime = timedelta(hours=shour, minutes=smin, seconds=ssec)
+            stime = datetime(year, month, day, shour, smin, ssec, tzinfo=tzone)
 
             eTimeSections = reader[curMeeting]['etime'].split(':')
             ehour = int(eTimeSections[0])
             emin = int(eTimeSections[1])
             esec = int(eTimeSections[2])
-            etime = timedelta(hours=ehour, minutes=emin, seconds=esec)
+            etime = datetime(year, month, day, ehour, emin, esec, tzinfo=tzone)
 
-            thisMeeting = Meeting(meetingDate, stime, etime, reader[curMeeting]['className'],
+            thisMeeting = Meeting(stime, etime, reader[curMeeting]['className'],
                 reader[curMeeting]['classId'], reader[curMeeting]['teacher'], reader[curMeeting]['rawZoom'])
             ret.append(thisMeeting)
     return ret
@@ -107,79 +107,6 @@ def add_playlist(classId, playlistId):
         edit[classId] = playlistId
         with open(playlist_holder_file_path, mode='w') as file_out:
             json.dump(edit, file_out, indent=4)
-
-def log(message, printOnScreen=True):
-    export_file = 'data/log.txt'
-    with open(export_file, mode='a') as file_out:
-        file_out.write(str(datetime.now()) + ' ' + message + '\n')
-    if printOnScreen:
-        print(message, sys.stderr)
-
-def write_playlist_file():
-    edit = dict()
-    if os.stat(playlist_file_path).st_size == 0:
-        with open(playlist_file_path, mode='w') as file_out:
-            json.dump({}, file_out)
-    with open(playlist_file_path, mode='r') as file_in:
-        edit = json.load(file_in)
-        with open(playlist_holder_file_path, mode='r') as file_in_1:
-            read = json.load(file_in_1)
-            for playlist in read:
-                edit[playlist] = read[playlist]
-    with open(playlist_file_path, mode='w') as file_out:
-        json.dump(edit, file_out, indent=4)
-
-def match(videoTitle, meetingdb_file_path, minutesAllow, daylight = False):
-    '''match a video's title to its thinkland class'''
-    matches = list()
-    sections = videoTitle.split(' ')
-    if len(sections) < 3 or len(sections[1]) < 11 or len(sections[2]) < 6 or not sections[1][3:].isdigit() or not sections[2].isdigit():
-        return None
-    year = int(sections[1][3:7])
-    month = int(sections[1][7:9])
-    day = int(sections[1][9:11])
-    hour = int(sections[2][:2])
-    mins = int(sections[2][2:4])
-    sec = int(sections[2][4:6])
-    video_dt = datetime(year, month, day, hour, mins, sec, tzinfo=ZoneInfo('UTC'))
-    if not daylight:
-        video_dt -= timedelta(hours=1)
-
-    zoomId = sections[0]
-    all_meetings = dict()
-    with open(meetingdb_file_path, mode='r') as file_in:
-        all_meetings = json.load(file_in)
-    maxDif = timedelta(minutes=minutesAllow)
-    zone = ZoneInfo('US/Eastern')
-    for each_meeting in all_meetings:
-        if zoomId != get_canonical_zoom_id(all_meetings[each_meeting]['rawZoom']):
-            continue
-        print('made it with ' + each_meeting + ' to ' + zoomId)
-        sections_meet = all_meetings[each_meeting]['date'].split('-')
-        year = int(sections_meet[0])
-        month = int(sections_meet[1])
-        day = int(sections_meet[2])
-        sections_time = all_meetings[each_meeting]['stime'].split(':')
-        hour = int(sections_time[0])
-        mins = int(sections_time[1])
-        sec = int(sections_time[2])
-
-        meeting_dt = datetime(year, month, day, hour, mins, sec, tzinfo=zone).astimezone(ZoneInfo('UTC'))
-        time_dif = meeting_dt - video_dt
-        print(time_dif)
-        print(meeting_dt)
-        print(video_dt)
-        if time_dif >= -maxDif and time_dif <= maxDif:
-            sections_time = all_meetings[each_meeting]['etime'].split(':')
-            matches.append(Meeting(datetime(year, month, day, tzinfo=zone), timedelta(hours=hour, minutes=mins, seconds=sec),
-            timedelta(hours=int(sections_time[0]), minutes=int(sections_time[1]), seconds=int(sections_time[2])),
-            all_meetings[each_meeting]['className'], all_meetings[each_meeting]['classId'],
-            all_meetings[each_meeting]['teacher'], all_meetings[each_meeting]['rawZoom']))
-    print(matches)
-    if len(matches) == 0:
-        return None
-    return matches[0]
-        
 
 
 if __name__ == '__main__':
