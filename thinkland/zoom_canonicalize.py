@@ -9,7 +9,6 @@ ZOOM_KEY = {
     "z1@thinklandai.com": "Z01",
     "z7@thinklandai.com": "Z07",
     "z3@thinklandai.com": "Z03",
-    "aicode1@huaxiabh.org": "?",
     "z4@thinklandai.com": "Z04",
     "z9@thinklandai.com": "Z09",
     "teach@thinkland.ai": "Z06",
@@ -22,9 +21,7 @@ ZOOM_KEY = {
     "hcsgb_minor@hopechineseschool.org": "Z16",
     "Z02-TL": "Z02",
     "z8@thinklandai.com": "Z08",
-    "sqinga3@bostoncccc.org": "?",
     "Z10-TL": "Z10",
-    "teachersun.hxbg@gmail.com": "?",
     "enrichmentclass3@tvcs.ngo": "Z19",
     "enrichmentclass2@tvcs.ngo": "Z18",
     "Z08-TL": "Z08",
@@ -38,15 +35,17 @@ ZOOM_KEY = {
     "Z05-TL": "Z05",
     "Z07-TL": "Z07"
 }
+#"sqinga3@bostoncccc.org": "?",
+#"teachersun.hxbg@gmail.com": "?",
+#"aicode1@huaxiabh.org": "?",
+    
 
 def is_canonical(id):
-    if id[0] != 'Z':
-        return False
-    if not id[2].isdigit():
-        return False
-    if id[1] == '1':
-        return id[2] != '5'
-    return id[0] == '0'
+    for key in ZOOM_KEY:
+        if id == ZOOM_KEY[key]:
+            return True
+    return False
+
 
 def get_canonical_zoom_id(account):
     if account in ZOOM_KEY:
