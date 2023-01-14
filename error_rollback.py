@@ -1,14 +1,7 @@
 #!/usr/bin/env python
 #
-# This program is a Youtube Client for the AigoLearning video management
-# project.
-#
-#
-# Dependency:
-# Need to run this problem with python 3.11+
-# pip3 install --upgrade google-api-python-client oauth2client
-#
-# TODO(jacktongyj): add more documentation
+# Rollback the videos in the ErrorProcessing playlist to the Unprocessed Playlist
+# Also remove the first line of the description of the video
 #
 # The OAuth2 part code uses the library from another project at
 # https://github.com/tokland/youtube-upload
@@ -56,7 +49,7 @@ def get_youtube_handler(options):
     return auth.get_resource(client_secrets, credentials,
                              get_code_callback=get_code_callback)
 
-def get_some_unprocessed_videos(youtube):
+def get_some_error_processing_videos(youtube):
     """Try to retrieve some unprocessed videos.
     
     Returns a list of (video_id, title, playlist_item_id) tuples.
@@ -67,8 +60,8 @@ def get_some_unprocessed_videos(youtube):
     """
     request = youtube.playlistItems().list(
         part='snippet,contentDetails',
-        maxResults=2, # TODO: Change maxResults to flag
-        playlistId=unprocessed_playlist
+        maxResults=25, # TODO: Change maxResults to flag
+        playlistId=error_processing_playlist
     )
     pl_items_list = request.execute()
     ret = list()
@@ -82,8 +75,6 @@ def get_some_unprocessed_videos(youtube):
             }
         )
     return ret
-
-def process_video(video, meeting, youtube):
     """Take a video, which is a (video_id, title, playlist_item_id) tuple.
     Extracts the canonical zoom account from title.
     Extracts GMT date time from title. EDIT: GMT date from meetingdb, meeting is pre-input
@@ -96,18 +87,18 @@ def process_video(video, meeting, youtube):
     """
     can_zid = video['title'].split(' ')[0]  # better to get it from meeting object
     recording_start = meeting.startTime
-    new_title = meeting.className + ' ' + meeting.teacherName + ' ' + str(recording_start)
-    if "gallery" in video['title']:
-        new_title = new_title + " Gallery"
+    # new_title = meeting.className + ' ' + meeting.teacherName + ' ' + str(recording_start)
+    # if "gallery" in video['title']:
+    #     new_title = new_title + " Gallery"
 
-    new_desc = '###' + can_zid + '|' + meeting.classId + '|' + str(recording_start) + '|' + meeting.teacherName + '|' + meeting.className + '###\n###YJv1###\n' + video['title']
+    # new_desc = '###' + can_zid + '|' + meeting.classId + '|' + str(recording_start) + '|' + meeting.teacherName + '|' + meeting.className + '###\n###YJv1###\n' + video['title']
     request = youtube.videos().update(
         part='snippet',
         body={
             'id': video['id'],
             'snippet': {
-                'description': new_desc,
-                'title': new_title,
+                'description': '',
+                'title': video['title'],
                 'categoryId': 22
             }
         }
@@ -134,8 +125,13 @@ def process_video(video, meeting, youtube):
     request.execute()
     log("Removed video %s from unprocessed playlist" % video['id'])
 
-def process_unmatched_video(youtube, video):
-    new_desc = '''###YJv1:video does not match any meeting###\n%s''' % (video['desc'])
+def process_video(youtube, video):
+    # first, remove the first line of the description
+    desc = video['desc'].split('\n')
+    new_desc = video['desc']
+    if len(desc) > 0:
+        new_desc = '\n'.join(desc[1:])
+
     request = youtube.videos().update(
         part='snippet',
         body={
@@ -148,12 +144,12 @@ def process_unmatched_video(youtube, video):
         }
     )
     request.execute()
-    log('Updated unmatched video %s description' % video["id"])
+    log('Updated video %s description' % video["id"])
     request = youtube.playlistItems().insert(
         part="snippet",
         body={
             "snippet": {
-                "playlistId": error_processing_playlist,
+                "playlistId": unprocessed_playlist,
                 "resourceId": {
                     "kind": "youtube#video",
                     "videoId": video['id']
@@ -162,32 +158,11 @@ def process_unmatched_video(youtube, video):
         }
     )
     request.execute()
-    log('Added video %s to error processing playlist' % video['id'])
+    log('Added video %s to unprocessing playlist' % video['id'])
     request = youtube.playlistItems().delete(id=video['itemId'])
     request.execute()
-    log('Removed video %s from unprocessed playlist' % video['id'])
+    log('Removed video %s from error-processing playlist' % video['id'])
 
-def make_playlist(youtube, tlclass):
-    title = tlclass.className + ' | ' + tlclass.teacherName
-    desc = """###YJv1:%s:%s###""" % (tlclass.classId, tlclass.className)
-
-    request = youtube.playlists().insert(
-        part='snippet,status',
-        body={
-            'snippet': {
-                'title': title,
-                'description': desc,
-                'tags': [],
-                'defaultLanguage': 'en'
-            },
-            'status': {
-                'privacyStatus': 'unlisted'
-            }
-        }
-    )
-    response = request.execute()
-    log("Created a new playlist %s : %s" % (response['id'], title))
-    return response['id']
 
 
 def run_main(parser, options, args, output=sys.stdout):
@@ -195,61 +170,22 @@ def run_main(parser, options, args, output=sys.stdout):
     youtube = get_youtube_handler(options)
     if not youtube:
         raise AuthenticationError("Cannot get youtube resource")
-
-    playlist_json_file = options.playlist_json or 'data/playlist.json'
-    playlistDB = classes.PlaylistDB(playlist_json_file)
-    meeting_json_file = options.meeting_json or 'data/meetings.json'
-    meetingDB = classes.MeetingDB(meeting_json_file, playlistDB)
-
-    # call thinkland module to load the meetingDB object
-    # meetingDB = None  # placeholder
-    # playlistManager = None
     
-    unprocessed_videos = get_some_unprocessed_videos(youtube)
+    unprocessed_videos = get_some_error_processing_videos(youtube)
     youtube_points = 1
     v_processed = 0
-    error_processed = 0
 
     for video in unprocessed_videos:
-        meeting = meetingDB.match(video['title'], 20)
-        if meeting is None:
-            log("Meeting not found: " + video['title'])            
-            # TODO: update the video descrition, and move to a ErrorProcessing playlist
-            process_unmatched_video(youtube, video)
-            youtube_points += 160
-            error_processed += 1
-            if youtube_points > DAILY_THRESHOLD:
-                print('Videos processed: ' + str(v_processed))
-                print('Error processed: ' + str(error_processed))
-                print("Reached daily youtube points threshold: %d" % youtube_points)
-                break
-            continue
-
-        if meeting.playlist is None:
-            meeting.playlist = playlistDB.getPlaylist(meeting.classId)
-        if meeting.playlist is None:
-            meeting.playlist = make_playlist(youtube, meeting)
-            youtube_points += 50
-            playlistDB.addPlaylist(meeting, meeting.playlist)
-            playlistDB.writeBack()
+        process_video(youtube, video)
         
-        process_video(video, meeting, youtube)
-        if not meeting.youtubeURL:
-            meeting.youtubeURL = f'https://youtube.com/watch?v={video["id"]}'
-        else:
-            meeting.youtubeURL = meeting.youtubeURL + f' https://youtube.com/watch?v={video["id"]}'
         v_processed += 1
-    
         youtube_points += 160
         if youtube_points > DAILY_THRESHOLD:
             print('Videos processed: ' + str(v_processed))
-            print('Error processed: ' + str(error_processed))
             print("Reached daily youtube points threshold: %d" % youtube_points)
             break
 
-    meetingDB.writeBack()
     print('Videos processed: ' + str(v_processed))
-    print('Error processed: ' + str(error_processed))
     print('Used daily youtube points: %d' % youtube_points)
 
 
