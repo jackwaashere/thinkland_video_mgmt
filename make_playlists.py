@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
-# Read from MeetingDB, create playlists for each class ID, write the playlistID back
-# to the MeetingDB.json and/or MeetingDB.csv
+# This program is a Youtube Client for the AigoLearning video management
+# project.
 #
 #
 # Dependency:
@@ -18,22 +18,31 @@
 import os
 import sys
 import optparse
-import json
+# import json
 from io import open
 import csv
+import time
 
 import googleapiclient.errors
 
 import auth
 from auth import lib
 
-from thinkland import meetingdb
+from thinkland import classes
+from thinkland.classes import log
 
-class AuthenticationError(Exception):
-    pass
 
-class RequestError(Exception):
-    pass
+unprocessed_playlist = 'PLzr1p9rMdhyAPAN1c6O-AeoJPUk4LkQj2'
+error_processing_playlist = 'PLzr1p9rMdhyCZ-wxUPEUy7plgIWP_l-cI'
+
+#unprocessed_playlist = 'PLLoERmYbGOUn9r9pAke-3_pj-kEEj9cpl'
+#error_processing_playlist = 'PLLoERmYbGOUkL5PX69LpM4bUiMYjhzOk2'
+
+DAILY_THRESHOLD = 5999 # 9000
+
+class AuthenticationError(Exception): pass
+
+class RequestError(Exception): pass
 
 def get_youtube_handler(options):
     """Return the API Youtube object."""
@@ -48,34 +57,9 @@ def get_youtube_handler(options):
     return auth.get_resource(client_secrets, credentials,
                              get_code_callback=get_code_callback)
 
-
-
-def get_some_unprocessed_videos(youtube):
-    '''Try to retrieve some unprocessed videos.
-    
-    Returns a list of (video_id, title, playlist_item_id) tuples.
-    
-    Because of the Youtube API quota. We need to limit to process up to N videos
-    a day. N is set by flag (default = 10)
-    '''
-    pass
-
-def process_video(video, meetingDB):
-    '''Take a video, which is a (video_id, title, playlist_item_id) tuple.
-    Extracts the canonical zoom account from title.
-    Extracts GMT date time from title.
-    Try to match to a meeting.
-    If the meeting has not an associated video, call Youtube API to update the title and description
-    of this video.
-    Add the video into its destination playlist.
-    Remove this video from the unprocessed playlist by hte given playlist_item_id.
-    Set the video_id back to the meetingsDB.
-    '''
-    pass
-
-def make_playlist(youtube, tlclass):
-    title = tlclass.className + ' | ' + tlclass.teacherName
-    desc = """###YJ1:%s:%s###""" % (tlclass.classId, tlclass.className)
+def make_playlist(youtube, plist_info, classId):
+    title = plist_info['Playlist Title']
+    desc = """###YJv1:%s###""" % (classId)
 
     request = youtube.playlists().insert(
         part='snippet,status',
@@ -92,51 +76,46 @@ def make_playlist(youtube, tlclass):
         }
     )
     response = request.execute()
+    log("Created a new playlist %s : %s" % (response['id'], title))
     return response['id']
 
+
 def run_main(parser, options, args, output=sys.stdout):
-    '''Run the main scripts from the parsed options/args.'''
+    """Run the main scripts from the parsed options/args."""
     youtube = get_youtube_handler(options)
     if not youtube:
-        raise AuthenticationError('Cannot get youtube resource')
+        raise AuthenticationError("Cannot get youtube resource")
 
-    with open('data/playlist_copy.json', 'w') as write:
-        json.dump({}, write)
+    playlist_json_file = options.playlist_json or 'data/playlist.json'
+    playlistDB = classes.PlaylistDB(playlist_json_file)
 
-    for tlclass in meetingdb.get_classes_without_playlist():
-        playlistId = make_playlist(youtube, tlclass)
-        # playlistId = 'testalotoshivermetimburrs'
-        # playlistId = 'aejmmnu'
-        meetingdb.add_playlist(tlclass.classId, playlistId)
-        # open a temp file if necessary, appending one row to the end of the temp file
-        meetingdb.log('Add a new playlist: classId=' + tlclass.classId + ' - plid=' + playlistId)
-    
-    meetingdb.write_playlist_file()
+    quota_usage = 0
+    playlists_made = 0
+    playlists_skipped = 0
+    quota_exceeded = False
+    for classId in playlistDB.allPlaylists:
+        if playlistDB.getPlaylistId(classId) == None:
+            if not quota_exceeded:
+                time.sleep(0.5)
+                pl_id = make_playlist(youtube, playlistDB.allPlaylists[classId], classId)
+                quota_usage += 50
+                playlists_made += 1
+                playlistDB.updatePlaylistId(classId, pl_id)
+                playlistDB.writeBack()
+                if quota_usage >= DAILY_THRESHOLD:
+                    log('Reached daily limit')
+                    quota_exceeded = True
+            else:
+                playlists_skipped += 1
 
 
-    # print some summary to the user
-    # # of videos processed
-
-    # TODO(jacktongyj): add your business logic here
-    #
-    # Example: list playlist items
-
-    # request = youtube.playlistItems().list(
-    #     part="snippet,contentDetails",
-    #     maxResults=100,
-    #     playlistId="PLLoERmYbGOUn9r9pAke-3_pj-kEEj9cpl"
-    # )
-
-    # request = youtube.playlists().list(
-    #     part="contentDetails",
-    #     maxResults=100,
-    #     channelId="UCrcb3-_rDP552yytnJp4_xw"
-    # )
-
-    # response = request.execute()
-    # print(json.dumps(response, indent=4))
-        
-
+    # print some summaries, e.g. how many new playlists are created
+    # and how many more playlists need to be created next time with new Daily quota
+    log('Created %d playlists' % playlists_made)
+    if playlists_skipped > 0:
+        log('%d playlists need to be created next time with more YouTube daily quota' % playlists_skipped)
+    else:
+        log('Created all the playlists')
 
 def main(arguments):
     usage = """TODO(jacktongyj): Add usage"""
@@ -150,13 +129,17 @@ def main(arguments):
     parser.add_option('', '--auth-browser', dest='auth_browser', action='store_true',
                       help='Open a GUI browser to authenticate if required')
 
+    # Business specific flags
+    parser.add_option('', '--playlist_json', dest = 'playlist_json',
+                      type='string', help='path to the json file of playlistDB')
+
     options, args = parser.parse_args(arguments)
 
     try:
         run_main(parser, options, args)
     except googleapiclient.errors.HttpError as error:
-        response = bytes.decode(error.content, encoding=lib.get_encoding()).strip() # type: ignore 
-        raise RequestError(u'Server response: {0}'.format(response))
+        response = bytes.decode(error.content).strip()
+        raise RequestError(u"Server response: {0}".format(response))
 
 
 if __name__ == '__main__':
