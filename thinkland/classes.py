@@ -140,16 +140,24 @@ class PlaylistDB:
             self.allPlaylists = json.load(file_in)
         self.jsonPlaylistFile = jsonPlaylistFile
 
-    def getPlaylist(self, classId):
+    def getPlaylistId(self, classId):
         if classId in self.allPlaylists:
-            return self.allPlaylists[classId]
+            return self.allPlaylists[classId]['Playlist ID']
         return None
 
-    def addPlaylist(self, tlClass, playlistID):
-        if tlClass.classId in self.allPlaylists:
-            log('Playlist found but being overwritten; PlaylistID: ' + self.allPlaylists[tlClass.classId] +
-                '; Class ID: ' + tlClass.classId, True)
-        self.allPlaylists[tlClass.classId] = playlistID
+    def updatePlaylistId(self, classId, playlistID):
+        """assumes that classId is already in the allPlaylists"""
+        if classId not in self.allPlaylists:
+            log('Class ID was not found in PlaylistDB, classId=%s, playlistId=%s' % (classId, playlistID))
+            return
+
+        if self.allPlaylists[classId]['Playlist ID'] != None:
+            # log('Playlist found but being overwritten; PlaylistID: ' + self.allPlaylists[tlClass.classId] +
+            #     '; Class ID: ' + tlClass.classId, True)
+            log('Playlist found but being overwritten; PlaylistID: ' + self.allPlaylists[classId]['Playlist ID'] +
+                '; Class ID: ' + classId, True)
+
+        self.allPlaylists[classId]['Playlist ID'] = playlistID
 
     def writeBack(self):
         with open(self.jsonPlaylistFile, 'w') as file_out:
