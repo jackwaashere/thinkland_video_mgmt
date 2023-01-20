@@ -19,26 +19,32 @@ ZOOM_KEY = {
     "z5@thinklandai.com": "Z05",
     "z10@thinklandai.com": "Z10",
     "hcsgb_minor@hopechineseschool.org": "Z16",
-    "Z02-TL": "Z02",
     "z8@thinklandai.com": "Z08",
-    "Z10-TL": "Z10",
     "enrichmentclass3@tvcs.ngo": "Z19",
     "enrichmentclass2@tvcs.ngo": "Z18",
-    "Z08-TL": "Z08",
-    "Z11-TL": "Z11",
-    "Z14-CNSCC17": "Z14",
-    "Z06-TL0": "Z06",
-    "Z13-CNSCC16": "Z13",
-    "Z03-TL": "Z03",
     "Z01-TL": "Z01",
+    "Z02-TL": "Z02",
+    "Z03-TL": "Z03",
     "Z04-TL": "Z04",
     "Z05-TL": "Z05",
-    "Z07-TL": "Z07"
+    "Z06-TL0": "Z06",
+    "Z07-TL": "Z07",
+    "Z08-TL": "Z08",
+    "Z09-TL": "Z09",
+    "Z10-TL": "Z10",
+    "Z11-TL": "Z11",
+    "Z14-CNSCC17": "Z14",
+    "Z13-CNSCC16": "Z13",
 }
 #"sqinga3@bostoncccc.org": "?",
 #"teachersun.hxbg@gmail.com": "?",
 #"aicode1@huaxiabh.org": "?",
-    
+
+SKIP_PAST = [
+    "sqinga3@bostoncccc.org",
+    "teachersun.hxbg@gmail.com",
+    "aicode1@huaxiabh.org"
+]
 
 def is_canonical(id):
     for key in ZOOM_KEY:
@@ -53,8 +59,9 @@ def get_canonical_zoom_id(account):
     # check whether account is already a canonical zoom id
     # if not, return a warning
     
-    if (not is_canonical(account)):
-        print('Zoom ID "' + account + '" is not a key nor a canonical ID itself.', sys.stderr)
+    if (not is_canonical(account)) and account not in SKIP_PAST:
+        pass
+        #print('Zoom ID "' + account + '" is not a key nor a canonical ID itself.', sys.stderr)
     return account
 
 

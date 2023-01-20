@@ -1,4 +1,5 @@
 import json
+import csv
 import sys
 from datetime import datetime
 from datetime import timedelta
@@ -9,7 +10,7 @@ from thinkland.zoom_canonicalize import is_canonical
 log_file = 'data/log.txt'
 
 class Meeting:
-    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId, reported, video):
+    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId, reported, video, title, description):#, vid_title, vid_desc):
         self.startTime = startTime
         self.endTime = endTime
         self.className = className
@@ -18,6 +19,10 @@ class Meeting:
         self.rawZoomId = rawZoomId
         self.reported = reported
         self.video = video
+        self.title = title
+        self.description = description
+        # self.vid_title = vid_title
+        # self.vid_desc = vid_desc
         self.youtubeURL = None
         self.playlist = None
 
@@ -52,13 +57,15 @@ class MeetingDB:
             endTime = datetime(year, month, day, hour, mins, sec, tzinfo=zoneInfo)
             
             meetingObj = Meeting(startTime, endTime,
-                            a['className'], a['classId'], a['teacher'], a['rawZoom'], a['reported'], a['video'])
+                                 a['className'], a['classId'], a['teacher'],
+                                 a['rawZoom'], a['reported'], a['video'], a['title'], a['description'])#,
+                                #  a['vid_title'], a['vid_desc'])
             if 'youtube_url' in a:
                 meetingObj.youtubeURL = a['youtube_url']
             if 'playlist' in a:
                 meetingObj.playlist = a['playlist']
             if not meetingObj.playlist:
-                meetingObj.playlist = playlistDB.getPlaylist(meetingObj.classId)
+                meetingObj.playlist = playlistDB.getPlaylistId(meetingObj.classId)
             self.allMeetings[meetingId] = meetingObj
             
 
@@ -87,6 +94,9 @@ class MeetingDB:
             meeting = self.allMeetings[meetingId]
             if zoomId != meeting.getCanonicalZoomId():
                 continue
+            
+            # if meeting.video != None:
+            #     continue
 
             time_diff = video_dt - meeting.startTime
             if meeting.startTime >= video_dt:
@@ -94,7 +104,7 @@ class MeetingDB:
             if time_diff <= maxDif:
                 matches.append(meeting)
 
-        print(matches)
+        # print(matches)
         if len(matches) == 0:
             return None
         elif len(matches) > 1:
@@ -132,7 +142,7 @@ class MeetingDB:
         with open(self.jsonFilePath, 'w') as write:
             json.dump(allMeetingsDict, write, indent=4)
 
-
+'''
 class PlaylistDB:
     def __init__(self, jsonPlaylistFile):
         # classID => playlistID mapping
@@ -144,7 +154,24 @@ class PlaylistDB:
         if classId in self.allPlaylists:
             return self.allPlaylists[classId]['Playlist ID']
         return None
+'''
 
+class PlaylistDB:
+    def __init__(self, csvPlaylistFile):
+        with open(csvPlaylistFile, mode='r') as file_in:
+            self.allPlaylists = {}
+            reader = csv.DictReader(file_in)
+            for line in reader:
+                if line['Playlist ID'] is not None:
+                    self.allPlaylists[line['Class ID']] = line['Playlist ID']
+        self.csvPlaylistFile = csvPlaylistFile
+    
+    def getPlaylistId(self, classId):
+        if classId in self.allPlaylists:
+            return self.allPlaylists[classId]
+        return None
+
+'''
     def updatePlaylistId(self, classId, playlistID):
         """assumes that classId is already in the allPlaylists"""
         if classId not in self.allPlaylists:
@@ -162,11 +189,19 @@ class PlaylistDB:
     def writeBack(self):
         with open(self.jsonPlaylistFile, 'w') as file_out:
             json.dump(self.allPlaylists, file_out, indent=4)
-
-
+'''
 
 def log(message, printOnScreen=True):
     with open(log_file, mode='a') as file_out:
         file_out.write(str(datetime.now()) + ' ' + message + '\n')
     if printOnScreen:
         print(message, sys.stderr)
+
+
+
+def appendProcessedVideo(csvFile, meeting, videoId):
+    with open(csvFile, 'a') as file_out:
+        date = str(meeting.startTime)[:10]
+        stime = str(meeting.startTime)[11:19]
+        line = '%s,%s,%s,%s,%s\n' % (meeting.classId, date, stime, meeting.teacherName, videoId)
+        file_out.write(line)
