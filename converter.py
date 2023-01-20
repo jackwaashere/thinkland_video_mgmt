@@ -35,8 +35,9 @@ def read_csv(inputFilePath):
         for line in reader:
             cur = {'date': line['Class Date'], 'stime': line['Start Time'],
                 'etime': line['End Time'], 'className': line['Class Name'],
-                'classId': line['Class ID'], 'teacher': line['Teacher'],
-                'rawZoom': line['Zoom ID'], 'reported': line['Reported'], 'video': line['Video']}
+                'classId': line['Class ID'], 'teacher': line['Teacher Name'],
+                'title': line['YouTube Title'], 'description': line['YouTube Description'],
+                'rawZoom': line['Zoom ID'], 'reported': line['Reported'], 'video': ''}#line['Video']}
             key = cur['classId'] + '|' + cur['date']
             meetingsList[key] = cur
     return meetingsList
