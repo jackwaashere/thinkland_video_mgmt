@@ -39,7 +39,8 @@ error_processing_playlist = 'PLzr1p9rMdhyCZ-wxUPEUy7plgIWP_l-cI'
 #error_processing_playlist = 'PLLoERmYbGOUkL5PX69LpM4bUiMYjhzOk2'
 
 DAILY_THRESHOLD = 9500
-UNPROCESSED_LIMIT = 50
+UNPROCESSED_LIMIT = 42
+NEXT_PAGE_TOKEN = "EAAaBlBUOkNESQ"
 
 class AuthenticationError(Exception): pass
 
@@ -70,6 +71,7 @@ def get_some_unprocessed_videos(youtube):
     request = youtube.playlistItems().list(
         part='snippet,contentDetails',
         maxResults=UNPROCESSED_LIMIT,
+        pageToken=NEXT_PAGE_TOKEN,
         playlistId=unprocessed_playlist
     )
     pl_items_list = request.execute()
@@ -83,6 +85,10 @@ def get_some_unprocessed_videos(youtube):
                 'itemId': item['id']
             }
         )
+    # print(json.dumps(pl_items_list, indent=4))
+    if "nextPageToken" in pl_items_list:
+        log("NEXT Page Token: " + pl_items_list["nextPageToken"])
+    print(json.dumps(pl_items_list["pageInfo"], indent=4))
     return ret
 
 def process_video(video, meeting, youtube):

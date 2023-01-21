@@ -114,33 +114,33 @@ class MeetingDB:
 
         return matches[0]
 
-    def writeBack(self):
-        # first convert self.allMeetings back dict
-        allMeetingsDict = dict()
-        for meetingId in self.allMeetings:
-            curMeeting = self.allMeetings[meetingId]
-            day = str(curMeeting.startTime)[:10]
-            stime = str(curMeeting.startTime)[11:19]
-            etime = str(curMeeting.endTime)[11:19]
-            d = {
-                'date': day,
-                'stime': stime,
-                'etime': etime,
-                'className': curMeeting.className,
-                'classId': curMeeting.classId,
-                'teacher': curMeeting.teacherName,
-                'rawZoom': curMeeting.rawZoomId,
-                'reported': curMeeting.reported,
-                'video': curMeeting.video
-            }
-            if curMeeting.youtubeURL:
-                d['youtube_url'] = curMeeting.youtubeURL
-            if curMeeting.playlist:
-                d['playlist'] = curMeeting.playlist
-            allMeetingsDict[meetingId] = d
+    # def writeBack(self):
+    #     # first convert self.allMeetings back dict
+    #     allMeetingsDict = dict()
+    #     for meetingId in self.allMeetings:
+    #         curMeeting = self.allMeetings[meetingId]
+    #         day = str(curMeeting.startTime)[:10]
+    #         stime = str(curMeeting.startTime)[11:19]
+    #         etime = str(curMeeting.endTime)[11:19]
+    #         d = {
+    #             'date': day,
+    #             'stime': stime,
+    #             'etime': etime,
+    #             'className': curMeeting.className,
+    #             'classId': curMeeting.classId,
+    #             'teacher': curMeeting.teacherName,
+    #             'rawZoom': curMeeting.rawZoomId,
+    #             'reported': curMeeting.reported,
+    #             'video': curMeeting.video
+    #         }
+    #         if curMeeting.youtubeURL:
+    #             d['youtube_url'] = curMeeting.youtubeURL
+    #         if curMeeting.playlist:
+    #             d['playlist'] = curMeeting.playlist
+    #         allMeetingsDict[meetingId] = d
 
-        with open(self.jsonFilePath, 'w') as write:
-            json.dump(allMeetingsDict, write, indent=4)
+    #     with open(self.jsonFilePath, 'w') as write:
+    #         json.dump(allMeetingsDict, write, indent=4)
 
 '''
 class PlaylistDB:

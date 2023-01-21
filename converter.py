@@ -73,7 +73,8 @@ def load_meetings_from_json_file(jsonFilePath):
             thisMeeting = Meeting(stime, etime, reader[curMeeting]['className'],
                 reader[curMeeting]['classId'], reader[curMeeting]['teacher'],
                 reader[curMeeting]['rawZoom'], reader[curMeeting]['reported'],
-                reader[curMeeting]['video'])
+                reader[curMeeting]['video'], reader[curMeeting]['title'],
+                reader[curMeeting]['description'])
             ret.append(thisMeeting)
     return ret
 
