@@ -27,20 +27,19 @@ import googleapiclient.errors
 import auth
 from auth import lib
 
-from thinkland import classes
+# from thinkland import classes
 from thinkland.classes import log
 from thinkland.classes import appendProcessedVideo
+from thinkland.playlist import PlaylistDB
+from thinkland.meeting import MeetingDB
 
 
 unprocessed_playlist = 'PLzr1p9rMdhyAPAN1c6O-AeoJPUk4LkQj2'
 error_processing_playlist = 'PLzr1p9rMdhyCZ-wxUPEUy7plgIWP_l-cI'
 
-#unprocessed_playlist = 'PLLoERmYbGOUn9r9pAke-3_pj-kEEj9cpl'
-#error_processing_playlist = 'PLLoERmYbGOUkL5PX69LpM4bUiMYjhzOk2'
 
 DAILY_THRESHOLD = 9500
-UNPROCESSED_LIMIT = 42
-NEXT_PAGE_TOKEN = "EAAaBlBUOkNESQ"
+UNPROCESSED_LIMIT = 50
 
 class AuthenticationError(Exception): pass
 
@@ -59,7 +58,8 @@ def get_youtube_handler(options):
     return auth.get_resource(client_secrets, credentials,
                              get_code_callback=get_code_callback)
 
-def get_some_unprocessed_videos(youtube):
+next_page = 'NONE'
+def get_some_unprocessed_videos(youtube, next_page_token):
     """Try to retrieve some unprocessed videos.
     
     Returns a list of (video_id, title, playlist_item_id) tuples.
@@ -71,7 +71,7 @@ def get_some_unprocessed_videos(youtube):
     request = youtube.playlistItems().list(
         part='snippet,contentDetails',
         maxResults=UNPROCESSED_LIMIT,
-        pageToken=NEXT_PAGE_TOKEN,
+        pageToken=next_page_token,
         playlistId=unprocessed_playlist
     )
     pl_items_list = request.execute()
@@ -88,6 +88,8 @@ def get_some_unprocessed_videos(youtube):
     # print(json.dumps(pl_items_list, indent=4))
     if "nextPageToken" in pl_items_list:
         log("NEXT Page Token: " + pl_items_list["nextPageToken"])
+        global next_page
+        next_page = pl_items_list['nextPageToken']
     print(json.dumps(pl_items_list["pageInfo"], indent=4))
     return ret
 
@@ -109,7 +111,10 @@ def process_video(video, meeting, youtube):
     if "gallery" in video['title']:
         new_title = new_title + " Gallery"
 
-    new_desc = meeting.description + '\n\n###' + can_zid + '|' + meeting.classId + '|' + str(recording_start) + '|' + meeting.teacherName + '|' + meeting.className + '###\n###YJv1###\n' + video['title']
+    new_desc = (meeting.description + '\n\n###' + can_zid + '|' +
+                meeting.classId + '|' + str(recording_start) + '|' +
+                meeting.teacherName + '|' + meeting.className +
+                '###\n###YJv1###\n' + video['title'])
     request = youtube.videos().update(
         part='snippet',
         body={
@@ -198,8 +203,8 @@ def make_playlist(youtube, tlclass):
     log("Created a new playlist %s : %s" % (response['id'], title))
     return response['id']
 
-def dry_run(youtube, playlistDB, meetingDB, minutesAllow=15):
-    unprocessed_videos = get_some_unprocessed_videos(youtube)
+def dry_run(youtube, playlistDB, meetingDB, next_page_token, minutesAllow=15):
+    unprocessed_videos = get_some_unprocessed_videos(youtube, next_page_token)
 
     count_matched = 0
     count_valid = 0
@@ -207,7 +212,7 @@ def dry_run(youtube, playlistDB, meetingDB, minutesAllow=15):
         meeting = meetingDB.match(video['title'], minutesAllow)
         if meeting:
             count_matched += 1
-            playlist = playlistDB.getPlaylistId(meeting.classId)
+            playlist = playlistDB.getPlaylistId(meeting.classId, meeting.teacherName)
             if playlist:
                 count_valid += 1
                 print('Match with Playlist: %s %s %s' % (video['title'], video['id'], meeting.classId))
@@ -218,6 +223,7 @@ def dry_run(youtube, playlistDB, meetingDB, minutesAllow=15):
 
     print("%d matched out of %d unprocessed" % (count_matched, len(unprocessed_videos)))
     print("%d videos are eligible for processing" % count_valid)
+    print('Next page token: %s' % next_page)
 
 
 def run_main(parser, options, args, output=sys.stdout):
@@ -226,49 +232,38 @@ def run_main(parser, options, args, output=sys.stdout):
     if not youtube:
         raise AuthenticationError("Cannot get youtube resource")
 
-    playlist_csv_file = options.playlist_json or 'data/playlists.csv'
-    playlistDB = classes.PlaylistDB(playlist_csv_file)
-    meeting_json_file = options.meeting_json or 'data/meetings.json'
-    meetingDB = classes.MeetingDB(meeting_json_file, playlistDB)
+    meeting_csv_file = options.meeting_csv or 'data/meetings.csv'
+    playlistDB = PlaylistDB(meeting_csv_file)
+    meetingDB = MeetingDB(meeting_csv_file)
     processedCSV = options.processed_csv or 'data/processed.csv'
 
-    if not options.dry_run_off:
-        dry_run(youtube, playlistDB, meetingDB)
-        return
+    process_limit = options.process_limit or 50
 
-    # call thinkland module to load the meetingDB object
-    # meetingDB = None  # placeholder
-    # playlistManager = None
+    next_page_token = options.page_token or ''
+
+    if not options.dry_run_off:
+        dry_run(youtube, playlistDB, meetingDB, next_page_token)
+        return
     
-    unprocessed_videos = get_some_unprocessed_videos(youtube)
+    unprocessed_videos = get_some_unprocessed_videos(youtube, next_page_token)
     youtube_points = 1
     v_processed = 0
     skip_processed = 0
 
     for video in unprocessed_videos:
+        if v_processed >= process_limit:
+            log('Reached video processing limit of %d' % process_limit)
+            break
         meeting = meetingDB.match(video['title'], 20)
         if meeting is None:
             log("Meeting not found: " + video['title'])            
-            # TODO: update the video descrition, and move to a ErrorProcessing playlist
-            # process_unmatched_video(youtube, video)
-            # youtube_points += 160
-            # if youtube_points > DAILY_THRESHOLD:
-            #     print('Videos processed: ' + str(v_processed))
-            #     print('Error processed: ' + str(error_processed))
-            #     print("Reached daily youtube points threshold: %d" % youtube_points)
-            #     break
             skip_processed += 1
             continue
 
-        # if meeting.playlist is None:
-        meeting.playlist = playlistDB.getPlaylistId(meeting.classId)
-        if meeting.playlist is None:
+        meeting.playlist = playlistDB.getPlaylistId(meeting.classId, meeting.teacherName)
+        if not meeting.playlist:
             log("Playlist not created yet: " + video['title'])
             continue
-        #     meeting.playlist = make_playlist(youtube, meeting)
-        #     youtube_points += 50
-        #     playlistDB.updatePlaylistId(meeting, meeting.playlist)
-        #     playlistDB.writeBack()
         
         process_video(video, meeting, youtube)
         if not meeting.youtubeURL:
@@ -276,20 +271,19 @@ def run_main(parser, options, args, output=sys.stdout):
         else:
             meeting.youtubeURL = meeting.youtubeURL + f'https://youtube.com/watch?v={video["id"]}'
         v_processed += 1
+        appendProcessedVideo(processedCSV, meeting=meeting, videoId=video["id"])
+        
         youtube_points += 160
         if youtube_points > DAILY_THRESHOLD:
             print('Videos processed: ' + str(v_processed))
             print('Skip processed: ' + str(skip_processed))
             print("Reached daily youtube points threshold: %d" % youtube_points)
             break
-        # TODO: write processed video file
-        appendProcessedVideo(processedCSV, meeting=meeting, videoId=video["id"])
 
-
-    # meetingDB.writeBack()
     print('Videos processed: ' + str(v_processed))
     print('Skip processed: ' + str(skip_processed))
     print('Used daily youtube points: %d' % youtube_points)
+    print('Next page token: %s' % next_page)
 
 
 def main(arguments):
@@ -305,14 +299,18 @@ def main(arguments):
                       help='Open a GUI browser to authenticate if required')
 
     # Business specific flags
-    parser.add_option('', '--meeting_json', dest='meeting_json',
-                      type="string", help='path to the json file of meetingDB')
-    parser.add_option('', '--playlist_json', dest = 'playlist_json',
-                      type='string', help='path to the json file of playlistDB')
+    parser.add_option('', '--meeting_csv', dest='meeting_csv',
+                      type="string", help='path to the csv file of meetingDB')
+    # parser.add_option('', '--playlist_json', dest = 'playlist_json',
+    #                   type='string', help='path to the json file of playlistDB')
     parser.add_option('', '--processed_csv', dest='processed_csv',
                       type='string', help='path to the csv file for processed vidoes')
     parser.add_option('', '--dry_run_off', dest='dry_run_off', action='store_true',
                       help='Turns off dry run mode')
+    parser.add_option('', '--page_token', dest='page_token',
+                      type='string', help='Specify a page token to start at')
+    parser.add_option('', '--process_limit', dest='process_limit',
+                      type='int', help='Limit the maximum number of videos to process')
 
     options, args = parser.parse_args(arguments)
 

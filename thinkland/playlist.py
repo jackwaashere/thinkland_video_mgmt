@@ -1,4 +1,5 @@
 import csv
+import sys
 from urllib import parse
 
 class PlaylistDB:
@@ -17,7 +18,12 @@ class PlaylistDB:
                 if line[PLAYLIST_URL]:
                     url = line[PLAYLIST_URL]
                     params = parse.parse_qs(parse.urlsplit(url).query)
-                    playlist_id = params['list']
+                    playlist_id = None
+                    if 'list' in params and len(params['list']) == 1:
+                        playlist_id = params['list'][0]
+                    else:
+                        print(("Bad YoutubeURL: %s" % url), sys.stderr)
+                        continue
                     if plkey not in self.allPlaylists:
                         self.allPlaylists[plkey] = playlist_id
                     elif self.allPlaylists[plkey] != playlist_id:
@@ -29,11 +35,12 @@ class PlaylistDB:
         plkey = "%s|%s" % (classId, teacherName)
         if plkey in self.ambiguousClasses:
             return None
-        if plkey in self.classPlaylists:
-            return self.classPlaylists[plkey]
+        if plkey in self.allPlaylists:
+            return self.allPlaylists[plkey]
         return None
 
 
 if __name__ == '__main__':
     plDB = PlaylistDB("data/meetings.csv")
     print(len(plDB.allPlaylists))
+    print(plDB.getPlaylistId("774", "Ananya Agarwal"))

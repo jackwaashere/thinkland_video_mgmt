@@ -74,6 +74,7 @@ class MeetingDB:
         if (len(sections) < 3 or len(sections[1]) < 11 or len(sections[2]) < 6 or
             not sections[1][3:].isdigit() or not sections[2].isdigit()):
             # TODO: print some error messages
+            print('Video title error: %s' % videoTitle)
             return None
         year = int(sections[1][3:7])
         month = int(sections[1][7:9])
