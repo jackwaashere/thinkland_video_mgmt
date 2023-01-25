@@ -58,40 +58,78 @@ def get_youtube_handler(options):
     return auth.get_resource(client_secrets, credentials,
                              get_code_callback=get_code_callback)
 
-next_page = 'NONE'
-def get_some_unprocessed_videos(youtube, next_page_token):
-    """Try to retrieve some unprocessed videos.
-    
-    Returns a list of (video_id, title, playlist_item_id) tuples.
-    EDIT: {'id': video_id, 'title': video_title, 'desc': video_description, 'itemId': playlist_item_id} dict
-    
-    Because of the Youtube API quota. We need to limit to process up to N videos
-    a day. N is set by flag (default = 10)
-    """
-    request = youtube.playlistItems().list(
-        part='snippet,contentDetails',
-        maxResults=UNPROCESSED_LIMIT,
-        pageToken=next_page_token,
-        playlistId=unprocessed_playlist
-    )
-    pl_items_list = request.execute()
+
+def get_unprocessed_videos(youtube, playlistDB, meetingDB, process_limit, minutesAllow=15):
+    next_page_token = ''
     ret = list()
-    for item in pl_items_list['items']:
-        ret.append(
-            {
-                'id': item['contentDetails']['videoId'],
-                'title': item['snippet']['title'],
-                'desc': item['snippet']['description'],
-                'itemId': item['id']
-            }
+    eligible = 0
+    while eligible < process_limit:
+        request = youtube.playlistItems().list(
+            part='snippet,contentDetails',
+            maxResults=UNPROCESSED_LIMIT,
+            pageToken=next_page_token,
+            playlistId=unprocessed_playlist
         )
-    # print(json.dumps(pl_items_list, indent=4))
-    if "nextPageToken" in pl_items_list:
-        log("NEXT Page Token: " + pl_items_list["nextPageToken"])
-        global next_page
-        next_page = pl_items_list['nextPageToken']
-    print(json.dumps(pl_items_list["pageInfo"], indent=4))
+        pl_items_list = request.execute()
+
+        for item in pl_items_list['items']:
+            video = {
+                    'id': item['contentDetails']['videoId'],
+                    'title': item['snippet']['title'],
+                    'desc': item['snippet']['description'],
+                    'itemId': item['id']
+                }
+            ret.append(video)
+            meeting = meetingDB.match(video['title'], minutesAllow)
+            if not meeting:
+                continue
+            playlist = playlistDB.getPlaylistId(meeting.classId, meeting.teacherName)
+            if not playlist:
+                continue
+            eligible += 1
+
+        # print(json.dumps(pl_items_list, indent=4))
+        if "nextPageToken" in pl_items_list:
+            next_page_token = pl_items_list['nextPageToken']
+        else:
+            break;
     return ret
+
+
+# next_page = 'NONE'
+# def get_some_unprocessed_videos(youtube, next_page_token):
+#     """Try to retrieve some unprocessed videos.
+    
+#     Returns a list of (video_id, title, playlist_item_id) tuples.
+#     EDIT: {'id': video_id, 'title': video_title, 'desc': video_description, 'itemId': playlist_item_id} dict
+    
+#     Because of the Youtube API quota. We need to limit to process up to N videos
+#     a day. N is set by flag (default = 10)
+#     """
+#     request = youtube.playlistItems().list(
+#         part='snippet,contentDetails',
+#         maxResults=UNPROCESSED_LIMIT,
+#         pageToken=next_page_token,
+#         playlistId=unprocessed_playlist
+#     )
+#     pl_items_list = request.execute()
+#     ret = list()
+#     for item in pl_items_list['items']:
+#         ret.append(
+#             {
+#                 'id': item['contentDetails']['videoId'],
+#                 'title': item['snippet']['title'],
+#                 'desc': item['snippet']['description'],
+#                 'itemId': item['id']
+#             }
+#         )
+#     # print(json.dumps(pl_items_list, indent=4))
+#     if "nextPageToken" in pl_items_list:
+#         log("NEXT Page Token: " + pl_items_list["nextPageToken"])
+#         global next_page
+#         next_page = pl_items_list['nextPageToken']
+#     print(json.dumps(pl_items_list["pageInfo"], indent=4))
+#     return ret
 
 def process_video(video, meeting, youtube):
     """Take a video, which is a (video_id, title, playlist_item_id) tuple.
@@ -203,8 +241,8 @@ def make_playlist(youtube, tlclass):
     log("Created a new playlist %s : %s" % (response['id'], title))
     return response['id']
 
-def dry_run(youtube, playlistDB, meetingDB, next_page_token, minutesAllow=15):
-    unprocessed_videos = get_some_unprocessed_videos(youtube, next_page_token)
+def dry_run(youtube, playlistDB, meetingDB, processLimit, minutesAllow=15):
+    unprocessed_videos = get_unprocessed_videos(youtube, playlistDB, meetingDB, processLimit)
 
     count_matched = 0
     count_valid = 0
@@ -223,7 +261,6 @@ def dry_run(youtube, playlistDB, meetingDB, next_page_token, minutesAllow=15):
 
     print("%d matched out of %d unprocessed" % (count_matched, len(unprocessed_videos)))
     print("%d videos are eligible for processing" % count_valid)
-    print('Next page token: %s' % next_page)
 
 
 def run_main(parser, options, args, output=sys.stdout):
@@ -237,15 +274,13 @@ def run_main(parser, options, args, output=sys.stdout):
     meetingDB = MeetingDB(meeting_csv_file)
     processedCSV = options.processed_csv or 'data/processed.csv'
 
-    process_limit = options.process_limit or 50
-
-    next_page_token = options.page_token or ''
+    process_limit = options.process_limit or 60
 
     if not options.dry_run_off:
-        dry_run(youtube, playlistDB, meetingDB, next_page_token)
+        dry_run(youtube, playlistDB, meetingDB, process_limit)
         return
     
-    unprocessed_videos = get_some_unprocessed_videos(youtube, next_page_token)
+    unprocessed_videos = get_unprocessed_videos(youtube, playlistDB, meetingDB, process_limit)
     youtube_points = 1
     v_processed = 0
     skip_processed = 0
@@ -283,7 +318,6 @@ def run_main(parser, options, args, output=sys.stdout):
     print('Videos processed: ' + str(v_processed))
     print('Skip processed: ' + str(skip_processed))
     print('Used daily youtube points: %d' % youtube_points)
-    print('Next page token: %s' % next_page)
 
 
 def main(arguments):
@@ -301,14 +335,10 @@ def main(arguments):
     # Business specific flags
     parser.add_option('', '--meeting_csv', dest='meeting_csv',
                       type="string", help='path to the csv file of meetingDB')
-    # parser.add_option('', '--playlist_json', dest = 'playlist_json',
-    #                   type='string', help='path to the json file of playlistDB')
     parser.add_option('', '--processed_csv', dest='processed_csv',
                       type='string', help='path to the csv file for processed vidoes')
     parser.add_option('', '--dry_run_off', dest='dry_run_off', action='store_true',
                       help='Turns off dry run mode')
-    parser.add_option('', '--page_token', dest='page_token',
-                      type='string', help='Specify a page token to start at')
     parser.add_option('', '--process_limit', dest='process_limit',
                       type='int', help='Limit the maximum number of videos to process')
 
