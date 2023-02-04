@@ -92,7 +92,7 @@ def get_unprocessed_videos(youtube, playlistDB, meetingDB, process_limit, minute
         if "nextPageToken" in pl_items_list:
             next_page_token = pl_items_list['nextPageToken']
         else:
-            break;
+            break
     return ret
 
 
