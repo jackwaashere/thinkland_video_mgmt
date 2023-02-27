@@ -39,6 +39,9 @@ from datetime import timedelta
 import urllib.request
 
 
+# Predefined Standard Zoom accounts used for matching purpose
+ZOOM_ACCOUNTS = ['Z01', 'Z02', 'Z03', 'Z04', 'Z05', 'Z06', 'Z07', 'Z08', 'Z09',
+    'Z10', 'Z11', 'Z12', 'Z13', 'Z14', 'Z16', 'Z17', 'Z18', 'Z19']
 
 ZOOM_KEY = {
     "MNCCS.zoom.04@gmail.com": "Z12",
@@ -101,7 +104,7 @@ def get_canonical_zoom_id(account):
     return account
 
 class Meeting:
-    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId, reported, video, title, description):#, vid_title, vid_desc):
+    def __init__(self, startTime, endTime, className, classId, teacherName, rawZoomId, reported, video, title, description):
         self.startTime = startTime
         self.endTime = endTime
         self.className = className
@@ -119,28 +122,15 @@ class Meeting:
         return get_canonical_zoom_id(self.rawZoomId)
 
 class MeetingDB:
-    def __init__(self, csvFilePath, zoneInfo=ZoneInfo('US/Eastern')):
+    def __init__(self, csvReader, zoneInfo=ZoneInfo('US/Eastern')):
         allMeetingsDict = {}
-        # with open(csvFilePath, 'r') as file_in:
-        # reader = csv.reader(csvFilePath)
-        reader = csvFilePath
         first = True
-        for line in reader:
-            # print(line)
-            # if first:
-            #     first = False
-            #     continue
+        for line in csvReader:
             cur = {'date': line['Class Date'], 'stime': line['Start Time'],
                 'etime': line['End Time'], 'className': line['Class Name'],
                 'classId': line['Class ID'], 'teacher': line['Teacher Name'],
                 'title': line['YouTube Title'], 'description': line['YouTube Description'],
-                'rawZoom': line['Zoom ID'], 'reported': line['Reported'], 'video': ''}#line['Video']}
-            
-            # cur = {'date': line[13], 'stime': line[19],
-            #     'etime': line[20], 'className': line[1],
-            #     'classId': line[0], 'teacher': line[8],
-            #     'title': line[15], 'description': line[16],
-            #     'rawZoom': line[21], 'reported': line[22], 'video': ''}
+                'rawZoom': line['Zoom ID'], 'reported': line['Reported'], 'video': ''}
             key = cur['classId'] + '|' + cur['date']
             allMeetingsDict[key] = cur
 
@@ -217,10 +207,6 @@ class MeetingDB:
         return matches[0]
 
 
-# Predefined Standard Zoom accounts used for matching purpose
-ZOOM_ACCOUNTS = ['Z01', 'Z02', 'Z03', 'Z04', 'Z05', 'Z06', 'Z07', 'Z08', 'Z09',
-    'Z10', 'Z11', 'Z12', 'Z13', 'Z14', 'Z16', 'Z17', 'Z18', 'Z19']
-
 def validFormat(prefix):
     '''create a prefix closer to the valid format'''
     changes = prefix
@@ -250,22 +236,15 @@ if __name__ == '__main__':
     dirname = wd.split('/')[-1]
     zoomPrefix = dirname.split('-')[0]
 
-    # meetingDB = MeetingDB("data/meetings.csv")
     meetingDB = MeetingDB(cr)
 
     valid = False
-    for zacc in ZOOM_ACCOUNTS:
-        if zacc == zoomPrefix:
-            valid = True
-            break
+    valid = zoomPrefix in ZOOM_ACCOUNTS
     
     if not valid:
         ''' check if prefix is similar to a zoom account name '''
         edited = validFormat(zoomPrefix)
-        for zacc in ZOOM_ACCOUNTS:
-            if zacc == edited:
-                valid = True
-                break
+        valid = edited in ZOOM_ACCOUNTS
         if valid:
             res = input('The directory name is not a valid Zoom ID, but is similar to ' + edited +
             '. If this is not a mistake, type \'Y\' to continue. Type anything else to terminate.\n')
@@ -279,26 +258,20 @@ if __name__ == '__main__':
 
     matched_cnt = 0
     total_cnt = 0
-    for file in os.listdir(wd):
-        if len(file) >= 3 and file[0 : 3] == 'GMT':
-            # year = int(file[3:7])
-            # month = int(file[7:9])
-            # day = int(file[9:11])
-            # hour = int(file[12:14])
-            # minute = int(file[14:16])
-            # second = int(file[16:18])
-            # stime = datetime(year, month, day, hour, minute, second)
-            matched = meetingDB.match(zoomPrefix + '-' + file, 15)
-            newFile = zoomPrefix + '-' + file
+    for fname in os.listdir(wd):
+        if len(fname) >= 3 and fname[0 : 3] == 'GMT':
+            matched = meetingDB.match(zoomPrefix + '-' + fname, 15)
+            newFile = zoomPrefix + '-' + fname
             if matched != None:
                 matched_cnt += 1
-                newFile = zoomPrefix + '-' + file.split('.')[0] + '___' + str(matched.startTime) + '___' + matched.className + '___' + matched.teacherName + '.' + file.split('.', 1)[1]
+                newFile = zoomPrefix + '-' + '.'.join(fname.split('.')[0:-1]) + '___' + str(matched.startTime)[0:10] + '___' + matched.className + '___' + matched.teacherName + '.' + fname.split('.')[-1]
             else:
                 print('NOT MATCHED')
-            oldPath = os.path.join(wd, file)
+            oldPath = os.path.join(wd, fname)
             newPath = os.path.join(wd, newFile)
-            print('Renaming ' + file + ' to ' + newFile)
+            print('Renaming ' + fname + ' to ' + newFile)
             total_cnt += 1
+            
             os.rename(oldPath, newPath)
 
     print("Completed!")
