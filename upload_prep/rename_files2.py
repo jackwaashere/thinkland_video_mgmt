@@ -9,10 +9,10 @@ Project: https://github.com/jackwaashere/video_upload
 
 $ python3 rename_files.py --working_dir "my_folder/Z09-1223"
 
-output> Renaming GMT20220812-183013_Recording_1760x820.mp4 to Z09-GMT20220812-183013_Recording_1760x820___2022-08-12 14:30:00-04:00___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
-output> Renaming GMT20221218-225935_Recording.transcript.vtt to Z09-GMT20221218-225935_Recording___2022-12-18 18:00:00-05:00___秋-AI005L2-18 Java 1on1 Sun 18:00-19:30 ET___Krishna Cheemalapati.transcript.vtt
-output> Renaming GMT20220828-232944_Recording_1760x900.mp4 to Z09-GMT20220828-232944_Recording_1760x900___2022-08-28 19:30:00-04:00___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
-output> Renaming GMT20221204-200309_Recording_1686x768.mp4 to Z09-GMT20221204-200309_Recording_1686x768___2022-12-04 15:00:00-05:00___秋-Math202L1-1 AMC 10 Sun 15:00-16:00 ET___James Leung.mp4
+output> Renaming GMT20220812-183013_Recording_1760x820.mp4 to Z09-GMT20220812-183013_Recording_1760x820___2022-08-12___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
+output> Renaming GMT20221218-225935_Recording.transcript.vtt to Z09-GMT20221218-225935_Recording.transcript___2022-12-18___秋-AI005L2-18 Java 1on1 Sun 18:00-19:30 ET___Krishna Cheemalapati.vtt
+output> Renaming GMT20220828-232944_Recording_1760x900.mp4 to Z09-GMT20220828-232944_Recording_1760x900___2022-08-28___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
+output> Renaming GMT20221204-200309_Recording_1686x768.mp4 to Z09-GMT20221204-200309_Recording_1686x768___2022-12-04___秋-Math202L1-1 AMC 10 Sun 15:00-16:00 ET___James Leung.mp4
 output> NOT MATCHED
 output> Renaming GMT20220908-195529_Recording.transcript.vtt to Z09-GMT20220908-195529_Recording.transcript.vtt
 output> Completed!
@@ -238,10 +238,7 @@ if __name__ == '__main__':
 
     meetingDB = MeetingDB(cr)
 
-    valid = False
-    valid = zoomPrefix in ZOOM_ACCOUNTS
-    
-    if not valid:
+    if zoomPrefix not in ZOOM_ACCOUNTS:
         ''' check if prefix is similar to a zoom account name '''
         edited = validFormat(zoomPrefix)
         valid = edited in ZOOM_ACCOUNTS
