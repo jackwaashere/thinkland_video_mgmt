@@ -9,20 +9,14 @@ Project: https://github.com/jackwaashere/video_upload
 
 $ python3 rename_files.py --working_dir "my_folder/Z09-1223"
 
-output> Renaming GMT20220812-183013_Recording_1760x820.mp4 to Z09-GMT20220812-183013_Recording_1760x820.mp4
-output> Renaming GMT20221218-225935_Recording.transcript.vtt to Z09-GMT20221218-225935_Recording.transcript.vtt
-output> Renaming GMT20220828-232944_Recording_1760x900.mp4 to Z09-GMT20220828-232944_Recording_1760x900.mp4
-output> Renaming GMT20221204-200309_Recording_1686x768.mp4 to Z09-GMT20221204-200309_Recording_1686x768.mp4
-output> Renaming GMT20221008-202855_Recording_1760x900.mp4 to Z09-GMT20221008-202855_Recording_1760x900.mp4
-output> Renaming GMT20220828-190822_Recording.transcript.vtt to Z09-GMT20220828-190822_Recording.transcript.vtt
-output> Renaming GMT20221023-005552_Recording.transcript.vtt to Z09-GMT20221023-005552_Recording.transcript.vtt
-output> Renaming GMT20220808-195529_Recording.transcript.vtt to Z09-GMT20220808-195529_Recording.transcript.vtt
-
-(too much output)...
-
-output> Renaming GMT20220916-220003_Recording_1920x1030.mp4 to Z09-GMT20220916-220003_Recording_1920x1030.mp4
-output> Renaming GMT20221101-230107_Recording_3026x1872.mp4 to Z09-GMT20221101-230107_Recording_3026x1872.mp4
+output> Renaming GMT20220812-183013_Recording_1760x820.mp4 to Z09-GMT20220812-183013_Recording_1760x820___2022-08-12 14:30:00-04:00___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
+output> Renaming GMT20221218-225935_Recording.transcript.vtt to Z09-GMT20221218-225935_Recording___2022-12-18 18:00:00-05:00___秋-AI005L2-18 Java 1on1 Sun 18:00-19:30 ET___Krishna Cheemalapati.transcript.vtt
+output> Renaming GMT20220828-232944_Recording_1760x900.mp4 to Z09-GMT20220828-232944_Recording_1760x900___2022-08-28 19:30:00-04:00___Summer AI005-36 Java L4 Fri 14:30-16:00 ET & Sun 19:30-21:00 ET___Ali Fakhry.mp4
+output> Renaming GMT20221204-200309_Recording_1686x768.mp4 to Z09-GMT20221204-200309_Recording_1686x768___2022-12-04 15:00:00-05:00___秋-Math202L1-1 AMC 10 Sun 15:00-16:00 ET___James Leung.mp4
+output> NOT MATCHED
+output> Renaming GMT20220908-195529_Recording.transcript.vtt to Z09-GMT20220908-195529_Recording.transcript.vtt
 output> Completed!
+output> 4/5 matched
 
 
 - Another Example
@@ -282,6 +276,9 @@ if __name__ == '__main__':
             print('No valid Zoom ID was found in the directory name')
             exit()
 
+
+    matched_cnt = 0
+    total_cnt = 0
     for file in os.listdir(wd):
         if len(file) >= 3 and file[0 : 3] == 'GMT':
             # year = int(file[3:7])
@@ -294,10 +291,15 @@ if __name__ == '__main__':
             matched = meetingDB.match(zoomPrefix + '-' + file, 15)
             newFile = zoomPrefix + '-' + file
             if matched != None:
+                matched_cnt += 1
                 newFile = zoomPrefix + '-' + file.split('.')[0] + '___' + str(matched.startTime) + '___' + matched.className + '___' + matched.teacherName + '.' + file.split('.', 1)[1]
+            else:
+                print('NOT MATCHED')
             oldPath = os.path.join(wd, file)
             newPath = os.path.join(wd, newFile)
             print('Renaming ' + file + ' to ' + newFile)
+            total_cnt += 1
             os.rename(oldPath, newPath)
 
     print("Completed!")
+    print(str(matched_cnt) + '/' + str(total_cnt) + ' matched')
