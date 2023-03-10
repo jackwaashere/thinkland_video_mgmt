@@ -258,6 +258,7 @@ if __name__ == '__main__':
     total_cnt = 0
     for fname in os.listdir(wd):
         if len(fname) >= 3 and fname[0 : 3] == 'GMT':
+            print("original file: " + fname)
             matched = meetingDB.match(zoomPrefix + '-' + fname, 15)
             newFile = zoomPrefix + '-' + fname
             if matched != None:
