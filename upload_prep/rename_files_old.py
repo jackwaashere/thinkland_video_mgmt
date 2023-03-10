@@ -64,7 +64,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     wd = os.path.abspath(args.working_dir)
-    dirname = wd.split('/')[-1]
+    dirname = os.path.basename(wd)
     zoomPrefix = dirname.split('-')[0]
 
     valid = False
