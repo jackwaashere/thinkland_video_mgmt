@@ -85,6 +85,11 @@ SKIP_PAST = [
     "aicode1@huaxiabh.org"
 ]
 
+def remove(value, deletechars):
+    for c in deletechars:
+        value = value.replace(c,'_')
+    return value
+
 def is_canonical(id):
     for key in ZOOM_KEY:
         if id == ZOOM_KEY[key]:
@@ -258,7 +263,6 @@ if __name__ == '__main__':
     total_cnt = 0
     for fname in os.listdir(wd):
         if len(fname) >= 3 and fname[0 : 3] == 'GMT':
-            print("original file: " + fname)
             matched = meetingDB.match(zoomPrefix + '-' + fname, 15)
             newFile = zoomPrefix + '-' + fname
             if matched != None:
@@ -266,12 +270,13 @@ if __name__ == '__main__':
                 newFile = zoomPrefix + '-' + '.'.join(fname.split('.')[0:-1]) + '___' + str(matched.startTime)[0:10] + '___' + matched.className + '___' + matched.teacherName + '.' + fname.split('.')[-1]
             else:
                 print('NOT MATCHED')
+            newFile = remove(newFile, '\\/:*?"<>| ')
             oldPath = os.path.join(wd, fname)
             newPath = os.path.join(wd, newFile)
             print('Renaming ' + fname + ' to ' + newFile)
             total_cnt += 1
             
-            os.rename(oldPath, newPath)
+            # os.rename(oldPath, newPath)
 
     print("Completed!")
     print(str(matched_cnt) + '/' + str(total_cnt) + ' matched')
