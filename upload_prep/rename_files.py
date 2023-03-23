@@ -276,7 +276,7 @@ if __name__ == '__main__':
             print('Renaming ' + fname + ' to ' + newFile)
             total_cnt += 1
             
-            # os.rename(oldPath, newPath)
+            os.rename(oldPath, newPath)
 
     print("Completed!")
     print(str(matched_cnt) + '/' + str(total_cnt) + ' matched')
